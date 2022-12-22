@@ -1,0 +1,189 @@
+version: "1.0"
+services:
+  # vpn
+  wireguard:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - SERVERURL=auto
+      - SERVERPORT=51820 #optional
+      - PEERS=1 #optional
+      - PEERDNS=auto #optional
+      - INTERNAL_SUBNET=10.13.13.0 #optional
+      - ALLOWEDIPS=0.0.0.0/0 #optional
+      - LOG_CONFS=true #optional
+    volumes:
+      - ${ROOT}/config/wireguard:/config
+      - ${ROOT}/wireguard/lib/modules:/lib/modules #optional
+    ports:
+      - 51820:51820/udp
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+
+  # plex server
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM}
+    volumes:
+      - ${ROOT}/config/plex:/config
+      - ${ROOT}/complete/tv:/tv
+      - ${ROOT}/complete/movies:/movies
+    ports:
+      - 32400:32400
+      - 1900:1900/udp
+      - 3005:3005
+      - 5353:5353/udp
+      - 8324:8324
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+      - 32469:32469
+    restart: unless-stopped
+
+  # optional: application dashboard
+  heimdall:
+    image: linuxserver/heimdall
+    container_name: heimdall
+    volumes:
+      - ${ROOT}/config/heimdall:/config
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 81:80
+      - 443:443
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8081
+    volumes:
+      - ${ROOT}/downloads/qbittorrent:/downloads # downloads folder
+      - ${ROOT}/config/qbittorrent:/config # config files
+    ports:
+      - 8081:8080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
+
+  jackett:
+    container_name: jackett
+    image: lscr.io/linuxserver/jackett:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - AUTO_UPDATE=true
+    volumes:
+      - ${ROOT}/downloads/torrent-blackhole:/downloads # place where to put .torrent files for manual download
+      - ${ROOT}/config/jackett:/config # config files
+    ports:
+      - 9117:9117
+
+  sonarr:
+    container_name: sonarr
+    image: lscr.io/linuxserver/sonarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/sonarr:/config # config files
+      - ${ROOT}/complete/tv:/tv # tv shows folder
+      - ${ROOT}/downloads/sonarr:/downloads # download folder
+    ports:
+      - 8989:8989
+      - 9898:9898
+
+
+  radarr:
+    container_name: radarr
+    image: lscr.io/linuxserver/radarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/radarr:/config # config files
+      - ${ROOT}/complete/movies:/movies # movies folder
+      - ${ROOT}/downloads/radarr:/downloads # download folder
+    ports:
+      - 7878:7878
+      - 8787:8787
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 5055:5055
+    volumes:
+      - ${ROOT}/config/overseerr:/config
+    restart: unless-stopped
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - 53:53/tcp
+      - 53:53/udp
+      - 82:80/tcp
+    environment:
+      - TZ=${TZ}
+      - WEBPASSWORD=${PIHOLE_WEB_PW}
+    volumes:
+      - ${ROOT}/pihole/etc-pihole:/etc/pihole
+      - ${ROOT}/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+
+  snapdrop:
+    image: lscr.io/linuxserver/snapdrop:latest
+    container_name: snapdrop
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/snapdrop:/config
+    ports:
+      - 83:80
+      - 444:443
+    restart: unless-stopped
+
+  homeassistant:
+    image: lscr.io/linuxserver/homeassistant:latest
+    container_name: homeassistant
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/homeassistant:/config
+    ports:
+      - 8123:8123
+    restart: unless-stopped
