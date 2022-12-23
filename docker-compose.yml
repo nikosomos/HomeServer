@@ -1,5 +1,115 @@
-version: "1.0"
 services:
+  # plex server
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM}
+    volumes:
+      - ${ROOT}/config/plex:/config
+      - ${ROOT}/data/media:/data/media
+    ports:
+      - 32400:32400
+      - 1900:1900/udp
+      - 3005:3005
+      - 5353:5353/udp
+      - 8324:8324
+      - 32410:32410/udp
+      - 32412:32412/udp
+      - 32413:32413/udp
+      - 32414:32414/udp
+      - 32469:32469
+    restart: unless-stopped
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8081
+    volumes:
+      - ${ROOT}/data/torrents:/data/torrents:rw # downloads folder
+      - ${ROOT}/config/qbittorrent:/config # config files
+    ports:
+      - 8081:8080
+      - 6881:6881
+      - 6881:6881/udp
+    restart: unless-stopped
+
+  jackett:
+    container_name: jackett
+    image: lscr.io/linuxserver/jackett:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - AUTO_UPDATE=true
+    volumes:
+      - ${ROOT}/data/torrents:/data/torrents # place where to put .torrent files for manual download
+      - ${ROOT}/config/jackett:/config # config files
+    ports:
+      - 9117:9117
+
+  sonarr:
+    container_name: sonarr
+    image: lscr.io/linuxserver/sonarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/sonarr:/config # config files
+      - ${ROOT}/data:/data # tv shows folder
+    ports:
+      - 8989:8989
+      - 9898:9898
+
+  radarr:
+    container_name: radarr
+    image: lscr.io/linuxserver/radarr:latest
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${ROOT}/config/radarr:/config # config files
+      - ${ROOT}/data:/data # movies folder
+    ports:
+      - 7878:7878
+      - 8787:8787
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 5055:5055
+    volumes:
+      - ${ROOT}/config/overseerr:/config
+    restart: unless-stopped
+
+  # recyclarr:
+  #   image: ghcr.io/recyclarr/recyclarr
+  #   container_name: recyclarr
+  #   user: ${PUID}:${PGID}
+  #   volumes:
+  #     - ${ROOT}/config/recyclarr:/config
+  #   environment:
+  #     - TZ=${TZ}
+  #     # - CRON_SCHEDULE=
+  #   restart: unless-stopped
+
   # vpn
   wireguard:
     image: lscr.io/linuxserver/wireguard:latest
@@ -27,32 +137,6 @@ services:
       - net.ipv4.conf.all.src_valid_mark=1
     restart: unless-stopped
 
-  # plex server
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM}
-    volumes:
-      - ${ROOT}/config/plex:/config
-      - ${ROOT}/complete/tv:/tv
-      - ${ROOT}/complete/movies:/movies
-    ports:
-      - 32400:32400
-      - 1900:1900/udp
-      - 3005:3005
-      - 5353:5353/udp
-      - 8324:8324
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
-      - 32469:32469
-    restart: unless-stopped
-
   # optional: application dashboard
   heimdall:
     image: linuxserver/heimdall
@@ -66,84 +150,6 @@ services:
     ports:
       - 81:80
       - 443:443
-    restart: unless-stopped
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - WEBUI_PORT=8081
-    volumes:
-      - ${ROOT}/downloads/qbittorrent:/downloads # downloads folder
-      - ${ROOT}/config/qbittorrent:/config # config files
-    ports:
-      - 8081:8080
-      - 6881:6881
-      - 6881:6881/udp
-    restart: unless-stopped
-
-  jackett:
-    container_name: jackett
-    image: lscr.io/linuxserver/jackett:latest
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - AUTO_UPDATE=true
-    volumes:
-      - ${ROOT}/downloads/torrent-blackhole:/downloads # place where to put .torrent files for manual download
-      - ${ROOT}/config/jackett:/config # config files
-    ports:
-      - 9117:9117
-
-  sonarr:
-    container_name: sonarr
-    image: lscr.io/linuxserver/sonarr:latest
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ${ROOT}/config/sonarr:/config # config files
-      - ${ROOT}/complete/tv:/tv # tv shows folder
-      - ${ROOT}/downloads/sonarr:/downloads # download folder
-    ports:
-      - 8989:8989
-      - 9898:9898
-
-
-  radarr:
-    container_name: radarr
-    image: lscr.io/linuxserver/radarr:latest
-    restart: unless-stopped
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ${ROOT}/config/radarr:/config # config files
-      - ${ROOT}/complete/movies:/movies # movies folder
-      - ${ROOT}/downloads/radarr:/downloads # download folder
-    ports:
-      - 7878:7878
-      - 8787:8787
-
-  overseerr:
-    image: lscr.io/linuxserver/overseerr:latest
-    container_name: overseerr
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    ports:
-      - 5055:5055
-    volumes:
-      - ${ROOT}/config/overseerr:/config
     restart: unless-stopped
 
   pihole:
@@ -187,3 +193,24 @@ services:
     ports:
       - 8123:8123
     restart: unless-stopped
+
+  # netdata:
+  #   image: netdata/netdata
+  #   container_name: netdata
+  #   ports:
+  #     - 19999:19999
+  #   volumes:
+  #     - ${ROOT}/config/netdata:/etc/netdata
+  #     - ${ROOT}/netdata/cache:/var/cache/netdata
+  #     - ${ROOT}/netdata/lib:/var/lib/netdata
+  #     - /etc/passwd:/host/etc/passwd:ro
+  #     - /etc/group:/host/etc/group:ro
+  #     - /proc:/host/proc:ro
+  #     - /sys:/host/sys:ro
+  #     - /etc/os-release:/host/etc/os-release:ro
+  #   restart: unless-stopped
+  #   cap_add:
+  #     - SYS_PTRACE
+  #   security_opt:
+  #     - apparmor:unconfined
+   
