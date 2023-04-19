@@ -1,42 +1,34 @@
 services:
-  # plex server
-  plex:
-    image: lscr.io/linuxserver/plex:latest
-    container_name: plex
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - VERSION=docker
-      - PLEX_CLAIM=${PLEX_CLAIM}
-    volumes:
-      - ${ROOT}/config/plex:/config
-      - ${ROOT}/data/media:/data/media
-    ports:
-      - 32400:32400
-      - 1900:1900/udp
-      - 3005:3005
-      - 5353:5353/udp
-      - 8324:8324
-      - 32410:32410/udp
-      - 32412:32412/udp
-      - 32413:32413/udp
-      - 32414:32414/udp
-      - 32469:32469
-    restart: unless-stopped
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-      - WEBUI_PORT=8081
+      - JELLYFIN_PublishedServerUrl=${JELLYFIN_URL} #optional
     volumes:
-      - ${ROOT}/data/torrents:/data/torrents:rw # downloads folder
-      - ${ROOT}/config/qbittorrent:/config # config files
+      - ${ROOT}/config/jellyfin:/config
+      - ${ROOT}/data/media:/data/media
+      - ${ROOT}/data2/media:/data2/media # second hard drive
     ports:
-      - 8081:8080
+      - 8096:8096
+    restart: unless-stopped
+
+  deluge:
+    image: lscr.io/linuxserver/deluge:latest
+    container_name: deluge
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - DELUGE_LOGLEVEL=error #optional
+    volumes:
+      - ${ROOT}/config/deluge:/config
+      - ${ROOT}/data/torrents:/data/torrents:rw
+      - ${ROOT}/data2/torrents:/data2/torrents:rw # second hard drive
+    ports:
+      - 8112:8112
       - 6881:6881
       - 6881:6881/udp
     restart: unless-stopped
@@ -52,6 +44,7 @@ services:
       - AUTO_UPDATE=true
     volumes:
       - ${ROOT}/data/torrents:/data/torrents # place where to put .torrent files for manual download
+      - ${ROOT}/data2/torrents:/data2/torrents # second hard drive
       - ${ROOT}/config/jackett:/config # config files
     ports:
       - 9117:9117
@@ -67,6 +60,7 @@ services:
     volumes:
       - ${ROOT}/config/sonarr:/config # config files
       - ${ROOT}/data:/data # tv shows folder
+      - ${ROOT}/data2:/data2 # second hard drive
     ports:
       - 8989:8989
       - 9898:9898
@@ -82,6 +76,7 @@ services:
     volumes:
       - ${ROOT}/config/radarr:/config # config files
       - ${ROOT}/data:/data # movies folder
+      - ${ROOT}/data2:/data2 # second hard drive
     ports:
       - 7878:7878
       - 8787:8787
@@ -99,88 +94,48 @@ services:
       - ${ROOT}/config/overseerr:/config
     restart: unless-stopped
 
-  # recyclarr:
-  #   image: ghcr.io/recyclarr/recyclarr
-  #   container_name: recyclarr
-  #   user: ${PUID}:${PGID}
-  #   volumes:
-  #     - ${ROOT}/config/recyclarr:/config
-  #   environment:
-  #     - TZ=${TZ}
-  #     # - CRON_SCHEDULE=
-  #   restart: unless-stopped
-
   # vpn
-  wireguard:
-    image: lscr.io/linuxserver/wireguard:latest
-    container_name: wireguard
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-      - SERVERURL=auto
-      - SERVERPORT=51820 #optional
-      - PEERS=1 #optional
-      - PEERDNS=auto #optional
-      - INTERNAL_SUBNET=10.13.13.0 #optional
-      - ALLOWEDIPS=0.0.0.0/0 #optional
-      - LOG_CONFS=true #optional
-    volumes:
-      - ${ROOT}/config/wireguard:/config
-      - ${ROOT}/wireguard/lib/modules:/lib/modules #optional
-    ports:
-      - 51820:51820/udp
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
-    restart: unless-stopped
+  #  wireguard:
+  #    image: lscr.io/linuxserver/wireguard:latest
+  #    container_name: wireguard
+  #    cap_add:
+  #      - NET_ADMIN
+  #      - SYS_MODULE
+  #    environment:
+  #      - PUID=${PUID}
+  #      - PGID=${PGID}
+  #      - TZ=${TZ}
+  #      - SERVERURL=auto
+  #      - SERVERPORT=51820 #optional
+  #      - PEERS=1 #optional
+  #      - PEERDNS=auto #optional
+  #      - INTERNAL_SUBNET=10.13.13.0 #optional
+  #      - ALLOWEDIPS=0.0.0.0/0 #optional
+  #      - LOG_CONFS=true #optional
+  #    volumes:
+  #      - ${ROOT}/config/wireguard:/config
+  #      - ${ROOT}/wireguard/lib/modules:/lib/modules #optional
+  #    ports:
+  #      - 51820:51820/udp
+  #    sysctls:
+  #      - net.ipv4.conf.all.src_valid_mark=1
+  #    restart: unless-stopped
 
-  # optional: application dashboard
-  heimdall:
-    image: linuxserver/heimdall
-    container_name: heimdall
-    volumes:
-      - ${ROOT}/config/heimdall:/config
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    ports:
-      - 81:80
-      - 443:443
-    restart: unless-stopped
-
-  pihole:
-    container_name: pihole
-    image: pihole/pihole:latest
-    ports:
-      - 53:53/tcp
-      - 53:53/udp
-      - 82:80/tcp
-    environment:
-      - TZ=${TZ}
-      - WEBPASSWORD=${PIHOLE_WEB_PW}
-    volumes:
-      - ${ROOT}/pihole/etc-pihole:/etc/pihole
-      - ${ROOT}/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
-    restart: unless-stopped
-
-  snapdrop:
-    image: lscr.io/linuxserver/snapdrop:latest
-    container_name: snapdrop
-    environment:
-      - PUID=${PUID}
-      - PGID=${PGID}
-      - TZ=${TZ}
-    volumes:
-      - ${ROOT}/config/snapdrop:/config
-    ports:
-      - 83:80
-      - 444:443
-    restart: unless-stopped
-
+  #  pihole:
+  #    container_name: pihole
+  #    image: pihole/pihole:latest
+  #    ports:
+  #      - 54:53/tcp
+  #      - 54:53/udp
+  #      - 82:80/tcp
+  #    environment:
+  #      - TZ=${TZ}
+  #      - WEBPASSWORD=${PIHOLE_WEB_PW}
+  #    volumes:
+  #      - ${ROOT}/pihole/etc-pihole:/etc/pihole
+  #      - ${ROOT}/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+  #    restart: unless-stopped
+  #
   homeassistant:
     image: lscr.io/linuxserver/homeassistant:latest
     container_name: homeassistant
@@ -194,23 +149,63 @@ services:
       - 8123:8123
     restart: unless-stopped
 
-  # netdata:
-  #   image: netdata/netdata
-  #   container_name: netdata
-  #   ports:
-  #     - 19999:19999
-  #   volumes:
-  #     - ${ROOT}/config/netdata:/etc/netdata
-  #     - ${ROOT}/netdata/cache:/var/cache/netdata
-  #     - ${ROOT}/netdata/lib:/var/lib/netdata
-  #     - /etc/passwd:/host/etc/passwd:ro
-  #     - /etc/group:/host/etc/group:ro
-  #     - /proc:/host/proc:ro
-  #     - /sys:/host/sys:ro
-  #     - /etc/os-release:/host/etc/os-release:ro
-  #   restart: unless-stopped
-  #   cap_add:
-  #     - SYS_PTRACE
-  #   security_opt:
-  #     - apparmor:unconfined
-   
+  swag:
+    image: lscr.io/linuxserver/swag:latest
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - URL=${SWAG_URL}
+      - VALIDATION=dns
+      - SUBDOMAINS=wildcard #optional
+      - DNSPLUGIN=duckdns #optional
+      - ONLY_SUBDOMAINS=true #optional
+    volumes:
+      - ${ROOT}/config/swag:/config
+    ports:
+      - 443:443
+      - 80:80 #optional
+    restart: unless-stopped
+
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    container_name: duckdns
+    environment:
+      - PUID=${PUID} #optional
+      - PGID=${PGID} #optional
+      - TZ=${TZ}
+      - SUBDOMAINS=${DUCK_DNS_SUBDOMAINS}
+      - TOKEN=${DUCK_DNS_TOKEN}
+      - LOG_FILE=false #optional
+    volumes:
+      - ${ROOT}/config/duckdns:/config #optional
+    restart: unless-stopped
+
+  zwave-js-ui:
+    container_name: zwave-js-ui
+    image: zwavejs/zwave-js-ui:latest
+    restart: unless-stopped
+    tty: true
+    stop_signal: SIGINT
+    environment:
+      - SESSION_SECRET=${ZWAVE_SESSION_SECRET}
+      - ZWAVEJS_EXTERNAL_CONFIG=/usr/src/app/store/.config-db
+      # Uncomment if you want log times and dates to match your timezone instead of UTC
+      # Available at https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+      - TZ=${TZ}
+      - PUID=${PUID}
+      - PGID=${PGID}
+    devices:
+      # Do not use /dev/ttyUSBX serial devices, as those mappings can change over time.
+      # Instead, use the /dev/serial/by-id/X serial device for your Z-Wave stick.
+      - ${ZWAVE_DEVICE}:/dev/zwave
+    volumes:
+      - ${ROOT}/config/zwavejs:/usr/src/app/store
+    # Or by using local folder
+    # - ./store:/usr/src/app/store
+    ports:
+      - 8091:8091 # port for web interface
+      - 3000:3000 # port for Z-Wave JS websocket server
